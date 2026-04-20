@@ -3,15 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { Bar } from 'react-chartjs-2'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement } from 'chart.js'
 import Sidebar from '../components/Sidebar'
+import axios from 'axios';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement)
 
 function Reportes() {
   const navigate = useNavigate()
-  const [productoIA, setProductoIA] = useState('—')
-  const [recomendacionIA, setRecomendacionIA] = useState('—')
-  const [nivelIA, setNivelIA] = useState('—')
-  const [cargando, setCargando] = useState(false)
+  const [productoIA, setProductoIA] = useState("Esperando análisis...");
+  const [recomendacionIA, setRecomendacionIA] = useState("");
+  const [nivelIA, setNivelIA] = useState("");
+  const [cargando, setCargando] = useState(false);
 
   useEffect(() => {
     // La autenticación ya se verifica en PrivateRoute
@@ -32,23 +33,24 @@ function Reportes() {
   async function obtenerPrediccion() {
     setCargando(true)
     try {
-      // ── Llamada real a la API cuando esté lista ──
-      // const response = await axios.get('http://127.0.0.1:8000/api/prediccion')
-      // const data = response.data
-      // setProductoIA(data.producto)
-      // setRecomendacionIA(data.recomendacion)
-      // setNivelIA(data.nivel)
+      const token = localStorage.getItem('token'); // Recuperamos el JWT
 
-      // ── Datos simulados por ahora ──
-      await new Promise(r => setTimeout(r, 1200))
-      setProductoIA('Cera auto brillante')
-      setRecomendacionIA('Reponer 50 unidades')
-      setNivelIA('Alta demanda')
+      const response = await axios.get('http://localhost:8000/api/ia/predict', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // "Pintamos" los datos en los estados que ya existen
+      setProductoIA(response.data.producto);
+      setRecomendacionIA(response.data.recomendacion);
+      setNivelIA(response.data.nivel);
 
     } catch (error) {
-      setProductoIA('Error al conectar')
-      setRecomendacionIA('Verifica que el servidor esté corriendo')
-      console.error('Error API IA:', error)
+      console.error("Error en el microservicio de IA:", error);
+
+      // Degradación Elegante: Mensaje amigable al usuario
+      setProductoIA("Servicio no disponible");
+      setRecomendacionIA("No pudimos conectar con el módulo de IA. Por favor, verifica que el servidor esté encendido o intenta más tarde.");
+      setNivelIA("Desconocido");
     } finally {
       setCargando(false)
     }
