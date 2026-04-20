@@ -23,5 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
+#DB
+elan.db
+
 # Local env files
 .env.local
+.env
