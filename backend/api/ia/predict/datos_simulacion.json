@@ -1,0 +1,9 @@
+[
+  { "nombre": "Ambientador", "cantidad": 12, "fecha": "2023-10-01" },
+  { "nombre": "Ambientador", "cantidad": 15, "fecha": "2023-10-02" },
+  { "nombre": "Límpido", "cantidad": 2, "fecha": "2023-10-01" },
+  { "nombre": "Límpido", "cantidad": 1, "fecha": "2023-10-03" },
+  { "nombre": "Desengrasante", "cantidad": 8, "fecha": "2023-10-02" },
+  { "nombre": "Ambientador", "cantidad": 18, "fecha": "2023-10-04" },
+  { "nombre": "Desengrasante", "cantidad": 5, "fecha": "2023-10-04" }
+]

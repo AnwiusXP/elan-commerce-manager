@@ -3,7 +3,7 @@ import api from './api'
 export const login = async (usuario, contrasena) => {
   try {
     const res = await api.post('/login', { usuario, contrasena })
-    localStorage.setItem('token', res.data.token)
+    localStorage.setItem('token', res.data.access_token)
     return { ok: true }
   } catch (error) {
     return { ok: false, mensaje: error?.response?.data?.message || 'Usuario o contraseña incorrectos.' }

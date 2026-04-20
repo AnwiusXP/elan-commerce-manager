@@ -17,7 +17,7 @@ from datetime import timedelta
 
 # 1. Corrección de Importación: Asegúrate de que los __init__.py existan
 try:
-    from api.ia.predict import predict_router
+    from api.ia.predict.predictor import router as predict_router
 except ImportError as e:
     print(f"Error crítico: No se pudo cargar el módulo de IA. Verifique los archivos __init__.py. Detalle: {e}")
     predict_router = None
@@ -49,10 +49,10 @@ app.add_middleware(
 # 3. Registro del Router de IA (Arquitectura de 3 Capas)
 if predict_router:
     app.include_router(
-        predict_router, 
-        prefix="/api/ia/predict", 
-        tags=["Inteligencia de Negocios (IA)"]
-    )
+    predict_router,
+    prefix="/api/ia/predict",
+    tags=["IA"]
+)
 
 # --- ESQUEMAS PYDANTIC ---
 
@@ -132,10 +132,6 @@ async def create_venta(venta: VentaRequest, db: Session = Depends(get_db), curre
 @app.get("/api/productos")
 async def list_productos(db: Session = Depends(get_db)):
     return db.query(Producto).all()
-
-@app.get("/")
-def health_check():
-    return {"status": "online", "service": "ECM IA Microservice"}
 
 # 4. Optimización de Arranque (Solución a SpawnProcess/Python 3.14)
 # En Windows y versiones nuevas de Python, el arranque debe estar protegido

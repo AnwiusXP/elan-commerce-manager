@@ -30,7 +30,7 @@ function Reportes() {
     }]
   }
 
-  async function obtenerPrediccion() {
+  const obtenerPrediccion = async () => {
     setCargando(true)
     try {
       const token = localStorage.getItem('token'); // Recuperamos el JWT
@@ -39,11 +39,23 @@ function Reportes() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      // "Pintamos" los datos en los estados que ya existen
-      setProductoIA(response.data.producto);
-      setRecomendacionIA(response.data.recomendacion);
-      setNivelIA(response.data.nivel);
+      const data = response.data;
 
+      // Objetivo: Confirmar qué estamos recibiendo
+      console.log("Datos recibidos desde el microservicio IA:", data);
+
+      // 2. MANEJO DE RESPUESTA Y DEGRADACIÓN ELEGANTE (US08)
+      // Validamos si la respuesta trae los datos correctos del Pydantic Schema
+      if (!data || !data.producto || data.producto === "Análisis Pendiente") {
+        setProductoIA("Análisis Pendiente");
+        setRecomendacionIA(data?.recomendacion || "Los datos actuales no son suficientes para generar una predicción precisa. Por favor, registre más ventas.");
+        setNivelIA(data?.nivel || "Informativo");
+      } else {
+        // 3. Actualización de estados (solo si existen los datos del modelo)
+        setProductoIA(data.producto);
+        setRecomendacionIA(data.recomendacion);
+        setNivelIA(data.nivel);
+      }
     } catch (error) {
       console.error("Error en el microservicio de IA:", error);
 
