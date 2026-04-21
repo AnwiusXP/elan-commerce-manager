@@ -1,131 +1,136 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Bar } from 'react-chartjs-2'
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement } from 'chart.js'
-import Sidebar from '../components/Sidebar'
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement)
+// 1. Registro obligatorio de los componentes de Chart.js
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
-function Reportes() {
-  const navigate = useNavigate()
-  const [productoIA, setProductoIA] = useState("Esperando análisis...");
-  const [recomendacionIA, setRecomendacionIA] = useState("");
-  const [nivelIA, setNivelIA] = useState("");
-  const [cargando, setCargando] = useState(false);
+const Reportes = () => {
+  // 2. Prevención de Vista Vacía: Estados iniciales seguros (Evita undefined en el primer render)
+  const [productoIA, setProductoIA] = useState("Pendiente");
+  const [recomendacionIA, setRecomendacionIA] = useState("Pendiente...");
+  const [nivelIA, setNivelIA] = useState("Pendiente");
 
-  useEffect(() => {
-    // La autenticación ya se verifica en PrivateRoute
-  }, [])
+  // Estado para la gráfica. Se inicializa en null para validar antes de renderizar
+  const [datosGrafica, setDatosGrafica] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const ventasMensuales = [320000, 450000, 390000, 520000, 410000, 480000, 560000]
-  const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul']
-
-  const dataGrafico = {
-    labels: meses,
-    datasets: [{
-      data: ventasMensuales,
-      backgroundColor: '#1e8a5e',
-      borderRadius: 6,
-    }]
-  }
-
+  // 3. Unificación de Funciones (Solución al ReferenceError y Hoisting)
   const obtenerPrediccion = async () => {
-    setCargando(true)
-    try {
-      const token = localStorage.getItem('token'); // Recuperamos el JWT
+    setIsLoading(true);
 
-      const response = await axios.get('http://localhost:8000/api/ia/predict', {
-        headers: { Authorization: `Bearer ${token}` }
+    try {
+      // Recuperar token para la petición segura
+      const token = localStorage.getItem('token') || '';
+
+      const respuesta = await axios.get('http://localhost:8000/api/ia/predict', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
-      const data = response.data;
+      const datos = respuesta.data;
 
-      // Objetivo: Confirmar qué estamos recibiendo
-      console.log("Datos recibidos desde el microservicio IA:", data);
+      // 4. Lógica de Consumo y US08: Si viene "Se requiere más información", se pinta directamente
+      setProductoIA(datos.producto || "N/A");
+      setRecomendacionIA(datos.recomendacion || "Se requiere más información para un análisis preciso.");
+      setNivelIA(datos.nivel || "Desconocido");
 
-      // 2. MANEJO DE RESPUESTA Y DEGRADACIÓN ELEGANTE (US08)
-      // Validamos si la respuesta trae los datos correctos del Pydantic Schema
-      if (!data || !data.producto || data.producto === "Análisis Pendiente") {
-        setProductoIA("Análisis Pendiente");
-        setRecomendacionIA(data?.recomendacion || "Los datos actuales no son suficientes para generar una predicción precisa. Por favor, registre más ventas.");
-        setNivelIA(data?.nivel || "Informativo");
+      // 5. Validación Segura de Chart.js: Solo preparamos la gráfica si hay datos en el array
+      if (datos.tendencias && Array.isArray(datos.tendencias) && datos.tendencias.length > 0) {
+        const labels = datos.tendencias.map((item, index) => item.fecha || `Día ${index + 1}`);
+        const dataValues = datos.tendencias.map(item => item.prediccion || item.valor || 0);
+
+        setDatosGrafica({
+          labels: labels,
+          datasets: [
+            {
+              label: 'Proyección de Demanda (XGBoost)',
+              data: dataValues,
+              borderColor: 'rgba(54, 162, 235, 1)',
+              backgroundColor: 'rgba(54, 162, 235, 0.2)',
+              tension: 0.3, // Curva suave
+              fill: true,
+            }
+          ]
+        });
       } else {
-        // 3. Actualización de estados (solo si existen los datos del modelo)
-        setProductoIA(data.producto);
-        setRecomendacionIA(data.recomendacion);
-        setNivelIA(data.nivel);
+        // Si no hay array de tendencias, nos aseguramos de que sea null para no quebrar el componente
+        setDatosGrafica(null);
       }
+
     } catch (error) {
-      console.error("Error en el microservicio de IA:", error);
-
-      // Degradación Elegante: Mensaje amigable al usuario
-      setProductoIA("Servicio no disponible");
-      setRecomendacionIA("No pudimos conectar con el módulo de IA. Por favor, verifica que el servidor esté encendido o intenta más tarde.");
-      setNivelIA("Desconocido");
+      console.error("Error al obtener datos de IA:", error);
+      // Degradación Elegante: El backend falló, pero la UI se mantiene viva informando al usuario
+      setProductoIA("No disponible");
+      setNivelIA("Error de conexión");
+      setRecomendacionIA("En este momento el motor de inteligencia artificial no está disponible. Sigue operando manualmente.");
+      setDatosGrafica(null);
     } finally {
-      setCargando(false)
+      setIsLoading(false);
     }
-  }
+  };
 
+  // 6. JSX Seguro: Todo está envuelto en validaciones lógicas
   return (
-    <div style={{ display: 'flex' }}>
-      <Sidebar active="Reportes" />
-      <div style={{ marginLeft: '200px', padding: '32px', flex: 1 }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '28px' }}>
-          Reportes y Predicción IA
-        </h1>
+    <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
+      <h2>Inteligencia de Negocios y Predicción (IA)</h2>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px' }}>
-          <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '12px', padding: '24px' }}>
-            <div style={{ color: '#8b949e', fontSize: '0.82rem', textTransform: 'uppercase', marginBottom: '20px' }}>
-              Ventas mensuales
-            </div>
-            <Bar data={dataGrafico} options={{
-              plugins: { legend: { display: false } },
-              scales: {
-                x: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
-                y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } }
+      {/* Botón enlazado al nombre exacto de la Arrow Function */}
+      <button
+        onClick={obtenerPrediccion}
+        disabled={isLoading}
+        style={{ padding: '10px 20px', cursor: 'pointer', marginBottom: '20px' }}
+      >
+        {isLoading ? 'Analizando con Gemini & XGBoost...' : 'Analizar Datos'}
+      </button>
+
+      {/* Tarjeta de Recomendaciones (Nunca se rompe porque sus estados siempre tienen un string) */}
+      <div style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '8px', marginBottom: '20px', backgroundColor: '#f9f9f9' }}>
+        <h3>Recomendación Estratégica (US08)</h3>
+        <p><strong>Producto Objetivo:</strong> {productoIA}</p>
+        <p><strong>Nivel de Demanda:</strong> {nivelIA}</p>
+        <p><strong>Consejo Gemini:</strong> {recomendacionIA}</p>
+      </div>
+
+      {/* Renderizado Condicional del Gráfico (Evita errores de lectura de properties de null) */}
+      <div style={{ height: '400px', border: '1px dashed #ccc', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {datosGrafica ? (
+          <Line
+            data={datosGrafica}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: 'top' },
+                title: { display: true, text: 'Proyección a 7 Días' }
               }
-            }} />
-          </div>
-
-          <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '12px', padding: '24px', height: 'fit-content' }}>
-            <div style={{ color: '#8b949e', fontSize: '0.82rem', textTransform: 'uppercase', marginBottom: '20px' }}>
-              Predicción IA
-            </div>
-
-            <div style={{ opacity: cargando ? 0.3 : 1 }}>
-              <div style={{ color: '#8b949e', fontSize: '0.8rem', marginBottom: '4px' }}>Producto con más demanda:</div>
-              <div style={{ color: '#1e8a5e', fontWeight: '600', marginBottom: '16px' }}>{productoIA}</div>
-
-              <div style={{ color: '#8b949e', fontSize: '0.8rem', marginBottom: '4px' }}>Recomendación:</div>
-              <div style={{ color: '#1e8a5e', fontWeight: '600', marginBottom: '16px' }}>{recomendacionIA}</div>
-
-              <div style={{ color: '#8b949e', fontSize: '0.8rem', marginBottom: '4px' }}>Nivel de demanda:</div>
-              <div style={{ display: 'inline-block', background: 'rgba(30,138,94,0.15)', color: '#1e8a5e', border: '1px solid rgba(30,138,94,0.3)', borderRadius: '20px', padding: '4px 14px', fontSize: '0.82rem' }}>
-                {nivelIA}
-              </div>
-            </div>
-
-            {cargando && (
-              <div style={{ color: '#8b949e', fontSize: '0.88rem', textAlign: 'center', padding: '16px 0' }}>
-                ⏳ Analizando datos...
-              </div>
-            )}
-
-            <button onClick={obtenerPrediccion} style={{
-              background: '#1e8a5e', border: 'none', color: '#fff',
-              borderRadius: '8px', padding: '10px 20px', fontSize: '0.9rem',
-              fontWeight: '600', cursor: 'pointer', width: '100%', marginTop: '16px'
-            }}>
-              🤖 Generar predicción
-            </button>
-          </div>
-        </div>
+            }}
+          />
+        ) : (
+          <p style={{ color: '#777' }}>No hay suficientes datos históricos para graficar proyecciones en este momento.</p>
+        )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Reportes
+export default Reportes;
