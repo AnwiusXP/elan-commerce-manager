@@ -1,136 +1,169 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement,
+  LineElement, Title, Tooltip, Legend, Filler
+} from 'chart.js';
+import {
+  LayoutDashboard, ShoppingBag, DollarSign, BarChart3,
+  BrainCircuit, Search, LogOut, User, RefreshCw, ChevronRight
+} from 'lucide-react';
+import axios from 'axios';
+import './Reportes.css';
 
-// 1. Registro obligatorio de los componentes de Chart.js
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
+  CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler
 );
 
-const Reportes = () => {
-  // 2. Prevención de Vista Vacía: Estados iniciales seguros (Evita undefined en el primer render)
-  const [productoIA, setProductoIA] = useState("Pendiente");
-  const [recomendacionIA, setRecomendacionIA] = useState("Pendiente...");
-  const [nivelIA, setNivelIA] = useState("Pendiente");
+const ReportesIA = () => {
+  const [productoId, setProductoId] = useState("");
+  const [prediccion, setPrediccion] = useState(null);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Estado para la gráfica. Se inicializa en null para validar antes de renderizar
-  const [datosGrafica, setDatosGrafica] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Lista de productos (Simulada, deberías cargarla de tu API de Laravel)
+  const productos = [
+    { id: 1, nombre: "Ambientador Elan Pure" },
+    { id: 2, nombre: "Límpido Desinfectante" },
+    { id: 3, nombre: "Detergente Líquido" },
+    { id: 4, nombre: "Desengrasante Multiusos" }
+  ];
 
-  // 3. Unificación de Funciones (Solución al ReferenceError y Hoisting)
-  const obtenerPrediccion = async () => {
-    setIsLoading(true);
-
+  const ejecutarAnalisis = async () => {
+    if (!productoId) {
+      alert("Por favor, selecciona un producto primero");
+      return;
+    }
+    setCargando(true);
+    setError(null);
     try {
-      // Recuperar token para la petición segura
-      const token = localStorage.getItem('token') || '';
-
-      const respuesta = await axios.get('http://localhost:8000/api/ia/predict', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const datos = respuesta.data;
-
-      // 4. Lógica de Consumo y US08: Si viene "Se requiere más información", se pinta directamente
-      setProductoIA(datos.producto || "N/A");
-      setRecomendacionIA(datos.recomendacion || "Se requiere más información para un análisis preciso.");
-      setNivelIA(datos.nivel || "Desconocido");
-
-      // 5. Validación Segura de Chart.js: Solo preparamos la gráfica si hay datos en el array
-      if (datos.tendencias && Array.isArray(datos.tendencias) && datos.tendencias.length > 0) {
-        const labels = datos.tendencias.map((item, index) => item.fecha || `Día ${index + 1}`);
-        const dataValues = datos.tendencias.map(item => item.prediccion || item.valor || 0);
-
-        setDatosGrafica({
-          labels: labels,
-          datasets: [
-            {
-              label: 'Proyección de Demanda (XGBoost)',
-              data: dataValues,
-              borderColor: 'rgba(54, 162, 235, 1)',
-              backgroundColor: 'rgba(54, 162, 235, 0.2)',
-              tension: 0.3, // Curva suave
-              fill: true,
-            }
-          ]
-        });
-      } else {
-        // Si no hay array de tendencias, nos aseguramos de que sea null para no quebrar el componente
-        setDatosGrafica(null);
-      }
-
-    } catch (error) {
-      console.error("Error al obtener datos de IA:", error);
-      // Degradación Elegante: El backend falló, pero la UI se mantiene viva informando al usuario
-      setProductoIA("No disponible");
-      setNivelIA("Error de conexión");
-      setRecomendacionIA("En este momento el motor de inteligencia artificial no está disponible. Sigue operando manualmente.");
-      setDatosGrafica(null);
+      const response = await axios.get(`http://localhost:8000/api/ia/predict?producto=${productoId}`);
+      setPrediccion(response.data);
+    } catch (err) {
+      setError('Error en la conexión con el motor de IA.');
     } finally {
-      setIsLoading(false);
+      setCargando(false);
     }
   };
 
-  // 6. JSX Seguro: Todo está envuelto en validaciones lógicas
   return (
-    <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
-      <h2>Inteligencia de Negocios y Predicción (IA)</h2>
+    <div className="admin-layout">
+      {/* BARRA LATERAL (SIDEBAR) */}
+      <aside className="sidebar">
+        <div className="sidebar-logo">
+          <img src="/logo-elan.png" alt="Elan Pure" />
+          <span>ECM Admin</span>
+        </div>
+        <nav className="sidebar-nav">
+          <div className="nav-item"><LayoutDashboard size={20} /> Dashboard</div>
+          <div className="nav-item"><ShoppingBag size={20} /> Inventario</div>
+          <div className="nav-item"><DollarSign size={20} /> Ventas</div>
+          <div className="nav-item active"><BarChart3 size={20} /> Reportes IA</div>
+          <div className="nav-separator">Configuración</div>
+          <div className="nav-item"><User size={20} /> Mi Cuenta</div>
+          <div className="nav-item logout"><LogOut size={20} /> Cerrar Sesión</div>
+        </nav>
+      </aside>
 
-      {/* Botón enlazado al nombre exacto de la Arrow Function */}
-      <button
-        onClick={obtenerPrediccion}
-        disabled={isLoading}
-        style={{ padding: '10px 20px', cursor: 'pointer', marginBottom: '20px' }}
-      >
-        {isLoading ? 'Analizando con Gemini & XGBoost...' : 'Analizar Datos'}
-      </button>
+      {/* CONTENIDO PRINCIPAL */}
+      <main className="main-content">
+        <header className="main-header">
+          <div className="breadcrumb">Panel / Reportes / <span>Analítica IA</span></div>
+          <div className="user-profile">
+            <span>Admin Elan Pure</span>
+            <div className="avatar">A</div>
+          </div>
+        </header>
 
-      {/* Tarjeta de Recomendaciones (Nunca se rompe porque sus estados siempre tienen un string) */}
-      <div style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '8px', marginBottom: '20px', backgroundColor: '#f9f9f9' }}>
-        <h3>Recomendación Estratégica (US08)</h3>
-        <p><strong>Producto Objetivo:</strong> {productoIA}</p>
-        <p><strong>Nivel de Demanda:</strong> {nivelIA}</p>
-        <p><strong>Consejo Gemini:</strong> {recomendacionIA}</p>
-      </div>
+        <section className="dashboard-body">
+          {/* BARRA DE FILTROS Y SELECCIÓN */}
+          <div className="filter-bar">
+            <div className="search-box">
+              <Search size={18} />
+              <select
+                value={productoId}
+                onChange={(e) => setProductoId(e.target.value)}
+              >
+                <option value="">Selecciona un producto para analizar...</option>
+                {productos.map(p => (
+                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <button className="btn-primary" onClick={ejecutarAnalisis} disabled={cargando}>
+              {cargando ? <RefreshCw className="spin" /> : <BrainCircuit size={18} />}
+              {cargando ? 'Procesando...' : 'Analizar con Gemini'}
+            </button>
+          </div>
 
-      {/* Renderizado Condicional del Gráfico (Evita errores de lectura de properties de null) */}
-      <div style={{ height: '400px', border: '1px dashed #ccc', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {datosGrafica ? (
-          <Line
-            data={datosGrafica}
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { position: 'top' },
-                title: { display: true, text: 'Proyección a 7 Días' }
-              }
-            }}
-          />
-        ) : (
-          <p style={{ color: '#777' }}>No hay suficientes datos históricos para graficar proyecciones en este momento.</p>
-        )}
-      </div>
+          {/* INDICADORES (TARJETAS) */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <span className="label">Ventas Históricas</span>
+              <div className="value">1,240 <small>unid</small></div>
+              <div className="trend up">+12.5%</div>
+            </div>
+            <div className="stat-card">
+              <span className="label">Predicción Demanda</span>
+              <div className="value">{prediccion ? prediccion.cantidad_estimada : '--'} <small>unid</small></div>
+              <div className="trend info">Próx. 7 días</div>
+            </div>
+            <div className="stat-card">
+              <span className="label">Confianza Motor</span>
+              <div className="value">94.2%</div>
+              <div className="trend">XGBoost Optimized</div>
+            </div>
+          </div>
+
+          {/* ÁREA DE GRÁFICO E IA */}
+          <div className="analytics-container">
+            <div className="chart-panel">
+              <div className="panel-header">
+                <h3>Tendencia y Proyección de Ventas</h3>
+                <p>Análisis de comportamiento temporal del producto</p>
+              </div>
+              <div className="chart-wrapper">
+                {/* VALIDACIÓN ESTRICTA: Solo renderiza si existe prediccion, datosGrafica y labels */}
+                {prediccion && prediccion.datosGrafica && prediccion.datosGrafica.labels ? (
+                  <Line
+                    data={prediccion.datosGrafica}
+                    options={{ responsive: true, maintainAspectRatio: false }}
+                  />
+                ) : (
+                  <div className="placeholder-chart">
+                    {cargando ? (
+                      "Cargando proyecciones..."
+                    ) : prediccion ? (
+                      "La IA generó la recomendación, pero no hay datos gráficos suficientes para este producto."
+                    ) : (
+                      "Selecciona un producto y presiona Analizar"
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="ai-panel">
+              <div className="ai-header">
+                <BrainCircuit color="#7c3aed" />
+                <h3>Asesor Gemini AI</h3>
+              </div>
+              <div className="ai-content">
+                {prediccion ? (
+                  <>
+                    <div className="ai-badge">Nivel: {prediccion.nivel}</div>
+                    <p className="ai-text">{prediccion.recomendacion}</p>
+                  </>
+                ) : (
+                  <p className="ai-placeholder">Esperando análisis para generar recomendaciones estratégicas...</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   );
 };
 
-export default Reportes;
+export default ReportesIA;
