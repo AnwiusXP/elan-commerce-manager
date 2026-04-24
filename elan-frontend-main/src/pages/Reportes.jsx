@@ -1,33 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, Title, Tooltip, Legend, Filler
 } from 'chart.js';
-import {
-  LayoutDashboard, ShoppingBag, DollarSign, BarChart3,
-  BrainCircuit, Search, LogOut, User, RefreshCw, ChevronRight
-} from 'lucide-react';
-import axios from 'axios';
-import './Reportes.css';
+import Sidebar from '../components/Sidebar'; // <-- Importamos tu Sidebar
 
-ChartJS.register(
-  CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler
-);
+// Registramos Filler para evitar el warning de la consola
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-const ReportesIA = () => {
+function Reportes() {
+  const [productos, setProductos] = useState([]);
   const [productoId, setProductoId] = useState("");
   const [prediccion, setPrediccion] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
 
-  // Lista de productos (Simulada, deberías cargarla de tu API de Laravel)
-  const productos = [
-    { id: 1, nombre: "Ambientador Elan Pure" },
-    { id: 2, nombre: "Límpido Desinfectante" },
-    { id: 3, nombre: "Detergente Líquido" },
-    { id: 4, nombre: "Desengrasante Multiusos" }
-  ];
+  // Simulamos la carga de productos para el select (Ajusta esto a tu endpoint real de productos si es necesario)
+  useEffect(() => {
+    // Aquí deberías llamar a tu getProductos() real. Usamos un mock basado en tu contexto previo.
+    setProductos([
+      { id: "1", nombre: "Ambientador" },
+      { id: "2", nombre: "Límpido" },
+      { id: "3", nombre: "Desengrasante" },
+      { id: "4", nombre: "Detergente ropa" }
+    ]);
+  }, []);
 
   const ejecutarAnalisis = async () => {
     if (!productoId) {
@@ -46,124 +45,158 @@ const ReportesIA = () => {
     }
   };
 
+  // --- ESTILOS COMPARTIDOS (Heredados de tu Dashboard) ---
+  const statsStyle = {
+    background: '#161b22',
+    border: '1px solid #30363d',
+    borderRadius: '12px',
+    padding: '24px',
+    flex: 1
+  };
+
+  const inputStyle = {
+    background: '#0d1117',
+    color: '#c9d1d9',
+    border: '1px solid #30363d',
+    padding: '10px 16px',
+    borderRadius: '6px',
+    outline: 'none',
+    marginRight: '12px'
+  };
+
+  const buttonStyle = {
+    background: '#1e8a5e',
+    color: '#ffffff',
+    border: 'none',
+    padding: '10px 20px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    transition: 'background 0.2s'
+  };
+
   return (
-    <div className="admin-layout">
-      {/* BARRA LATERAL (SIDEBAR) */}
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <img src="/logo-elan.png" alt="Elan Pure" />
-          <span>ECM Admin</span>
+    // Se asume que el body o un contenedor padre tiene background oscuro (#0d1117) y color de texto claro (#c9d1d9)
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#0d1117', color: '#c9d1d9' }}>
+
+      {/* 1. SIDEBAR INTEGRADO */}
+      <Sidebar active="Reportes" />
+
+      <div style={{ marginLeft: '200px', padding: '32px', flex: 1 }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '28px' }}>
+          Inteligencia de Negocios (IA)
+        </h1>
+
+        {/* CONTROLES DE ANÁLISIS */}
+        <div style={{ ...statsStyle, marginBottom: '24px', display: 'flex', alignItems: 'center' }}>
+          <select
+            style={inputStyle}
+            value={productoId}
+            onChange={(e) => setProductoId(e.target.value)}
+          >
+            <option value="">-- Seleccione un producto --</option>
+            <option value="Todos">Todos los productos</option>
+            {productos.map(p => (
+              <option key={p.id} value={p.id}>{p.nombre}</option>
+            ))}
+          </select>
+          <button
+            style={buttonStyle}
+            onClick={ejecutarAnalisis}
+            disabled={cargando}
+          >
+            {cargando ? 'Analizando...' : 'Analizar Datos'}
+          </button>
         </div>
-        <nav className="sidebar-nav">
-          <div className="nav-item"><LayoutDashboard size={20} /> Dashboard</div>
-          <div className="nav-item"><ShoppingBag size={20} /> Inventario</div>
-          <div className="nav-item"><DollarSign size={20} /> Ventas</div>
-          <div className="nav-item active"><BarChart3 size={20} /> Reportes IA</div>
-          <div className="nav-separator">Configuración</div>
-          <div className="nav-item"><User size={20} /> Mi Cuenta</div>
-          <div className="nav-item logout"><LogOut size={20} /> Cerrar Sesión</div>
-        </nav>
-      </aside>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <main className="main-content">
-        <header className="main-header">
-          <div className="breadcrumb">Panel / Reportes / <span>Analítica IA</span></div>
-          <div className="user-profile">
-            <span>Admin Elan Pure</span>
-            <div className="avatar">A</div>
+        {error && (
+          <div style={{ background: '#f8514920', color: '#f85149', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid #f8514950' }}>
+            {error}
           </div>
-        </header>
+        )}
 
-        <section className="dashboard-body">
-          {/* BARRA DE FILTROS Y SELECCIÓN */}
-          <div className="filter-bar">
-            <div className="search-box">
-              <Search size={18} />
-              <select
-                value={productoId}
-                onChange={(e) => setProductoId(e.target.value)}
-              >
-                <option value="">Selecciona un producto para analizar...</option>
-                {productos.map(p => (
-                  <option key={p.id} value={p.id}>{p.nombre}</option>
-                ))}
-              </select>
-            </div>
-            <button className="btn-primary" onClick={ejecutarAnalisis} disabled={cargando}>
-              {cargando ? <RefreshCw className="spin" /> : <BrainCircuit size={18} />}
-              {cargando ? 'Procesando...' : 'Analizar con Gemini'}
-            </button>
-          </div>
+        {/* RESULTADOS DE LA PREDICCIÓN */}
+        {prediccion && (
+          <>
+            {/* Tarjetas de Estadísticas (Mismo diseño que el Dashboard) */}
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
 
-          {/* INDICADORES (TARJETAS) */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <span className="label">Ventas Históricas</span>
-              <div className="value">1,240 <small>unid</small></div>
-              <div className="trend up">+12.5%</div>
-            </div>
-            <div className="stat-card">
-              <span className="label">Predicción Demanda</span>
-              <div className="value">{prediccion ? prediccion.cantidad_estimada : '--'} <small>unid</small></div>
-              <div className="trend info">Próx. 7 días</div>
-            </div>
-            <div className="stat-card">
-              <span className="label">Confianza Motor</span>
-              <div className="value">94.2%</div>
-              <div className="trend">XGBoost Optimized</div>
-            </div>
-          </div>
-
-          {/* ÁREA DE GRÁFICO E IA */}
-          <div className="analytics-container">
-            <div className="chart-panel">
-              <div className="panel-header">
-                <h3>Tendencia y Proyección de Ventas</h3>
-                <p>Análisis de comportamiento temporal del producto</p>
+              <div style={statsStyle}>
+                <div style={{ color: '#8b949e', fontSize: '0.82rem', marginBottom: '8px' }}>Producto Analizado</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: '700' }}>
+                  {prediccion.producto !== "Todos" ? `ID: ${prediccion.producto}` : "Global"}
+                </div>
               </div>
-              <div className="chart-wrapper">
-                {/* VALIDACIÓN ESTRICTA: Solo renderiza si existe prediccion, datosGrafica y labels */}
-                {prediccion && prediccion.datosGrafica && prediccion.datosGrafica.labels ? (
-                  <Line
-                    data={prediccion.datosGrafica}
-                    options={{ responsive: true, maintainAspectRatio: false }}
-                  />
-                ) : (
-                  <div className="placeholder-chart">
-                    {cargando ? (
-                      "Cargando proyecciones..."
-                    ) : prediccion ? (
-                      "La IA generó la recomendación, pero no hay datos gráficos suficientes para este producto."
-                    ) : (
-                      "Selecciona un producto y presiona Analizar"
-                    )}
-                  </div>
-                )}
+
+              <div style={statsStyle}>
+                <div style={{ color: '#8b949e', fontSize: '0.82rem', marginBottom: '8px' }}>Demanda Proyectada (Próx. Día)</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: '700', color: '#1e8a5e' }}>
+                  {prediccion.cantidad_estimada} <span style={{ fontSize: '1rem', color: '#8b949e' }}>unidades</span>
+                </div>
+              </div>
+
+              <div style={statsStyle}>
+                <div style={{ color: '#8b949e', fontSize: '0.82rem', marginBottom: '8px' }}>Nivel de Alerta</div>
+                <div style={{
+                  fontSize: '1.8rem',
+                  fontWeight: '700',
+                  color: prediccion.nivel === 'Alto' ? '#f85149' : (prediccion.nivel === 'Normal' ? '#1e8a5e' : '#e3b341')
+                }}>
+                  {prediccion.nivel}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Tarjeta de Recomendación Gemini (Destacada) */}
+            <div style={{ ...statsStyle, marginBottom: '24px', borderLeft: '4px solid #3b82f6' }}>
+              <div style={{ color: '#8b949e', fontSize: '0.85rem', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>✨</span> Sugerencia Estratégica (IA)
+              </div>
+              <div style={{ fontSize: '1rem', lineHeight: '1.5' }}>
+                {prediccion.recomendacion}
               </div>
             </div>
 
-            <div className="ai-panel">
-              <div className="ai-header">
-                <BrainCircuit color="#7c3aed" />
-                <h3>Asesor Gemini AI</h3>
+            {/* Gráfico de Tendencias adaptado al Dark Mode */}
+            <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '12px', padding: '24px' }}>
+              <div style={{ color: '#8b949e', fontSize: '0.85rem', marginBottom: '16px' }}>
+                Proyección de Ventas (Histórico + XGBoost)
               </div>
-              <div className="ai-content">
-                {prediccion ? (
-                  <>
-                    <div className="ai-badge">Nivel: {prediccion.nivel}</div>
-                    <p className="ai-text">{prediccion.recomendacion}</p>
-                  </>
-                ) : (
-                  <p className="ai-placeholder">Esperando análisis para generar recomendaciones estratégicas...</p>
-                )}
-              </div>
+
+              {prediccion.datosGrafica && prediccion.datosGrafica.labels.length > 0 ? (
+                <Line
+                  data={prediccion.datosGrafica}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: {
+                        labels: { color: '#c9d1d9' }
+                      }
+                    },
+                    scales: {
+                      x: {
+                        ticks: { color: '#8b949e' },
+                        grid: { color: '#21262d' }
+                      },
+                      y: {
+                        ticks: { color: '#8b949e' },
+                        grid: { color: '#21262d' }
+                      }
+                    }
+                  }}
+                />
+              ) : (
+                <div style={{ color: '#8b949e', textAlign: 'center', padding: '40px' }}>
+                  No hay suficientes datos para graficar.
+                </div>
+              )}
             </div>
-          </div>
-        </section>
-      </main>
+          </>
+        )}
+      </div>
     </div>
   );
-};
+}
 
-export default ReportesIA;
+export default Reportes;
