@@ -3,19 +3,20 @@ import json
 import pandas as pd
 import xgboost as xgb
 import google.generativeai as genai
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from database import get_db
 from models import Venta
 from auth import get_current_user
 
+# Aseguramos que el router no tenga prefijo interno para no duplicar /api/ia/predict
 router = APIRouter()
 
 # Configuración inicial de Gemini
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Sincronización: Esquema estricto que espera el frontend
+# Esquema de respuesta sincronizado con el frontend (US08)
 class AIResult(BaseModel):
     producto: str
     recomendacion: str
@@ -38,20 +39,21 @@ async def get_prediction(db: Session = Depends(get_db), current_user=Depends(get
                     })
             except:
                 continue
-    else:
-        # MODO SIMULACIÓN: Cargar Mock Data si la BD está vacía
-        ruta_mock = os.path.join(os.path.dirname(__file__), "datos_simulacion.json")
-        if os.path.exists(ruta_mock):
-            with open(ruta_mock, "r", encoding="utf-8") as f:
-                data_list = json.load(f)
 
-    # 2. Manejo de Datos Insuficientes (Cumplimiento US08)
+        # 2. VERIFICACIÓN US08: Lógica de simulación si la BD tiene datos insuficientes
     if len(data_list) < 3:
-        return AIResult(
-            producto="Análisis Pendiente",
-            recomendacion="Los datos actuales no son suficientes para generar una predicción precisa. Por favor, registre más ventas.",
-            nivel="Informativo"
-        )
+            ruta_json = os.path.join(os.path.dirname(__file__), "datos_simulacion.json")
+            if not os.path.exists(ruta_json):
+                raise HTTPException(status_code=404, detail="Archivo de simulación no encontrado")
+                
+            with open(ruta_json, "r", encoding="utf-8") as f:
+                datos_sim = json.load(f)
+                # Retorno estricto de simulación según US08
+                return AIResult(
+                    producto=datos_sim[0].get("producto", "N/A"),
+                    recomendacion="SIMULACIÓN: " + datos_sim[0].get("recomendacion_gemini", "Datos simulados."),
+                    nivel="Informativo"
+                )
 
     # 3. Procesamiento y Simulación XGBoost
     df = pd.DataFrame(data_list)

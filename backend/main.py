@@ -31,28 +31,26 @@ app = FastAPI(
     version="1.0.1"
 )
 
-# 2. Configuración de CORS Robusta
-# Permitimos tanto localhost como la IP loopback para evitar bloqueos en el navegador
+# 2. Configuración de CORS Robusta (DEBE IR ANTES DE LOS ROUTERS)
 origins = [
     "http://localhost:5173",
-    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"], # Permite GET, POST, OPTIONS, etc.
+    allow_headers=["*"], # Permite Authorization y Content-Type
 )
 
 # 3. Registro del Router de IA (Arquitectura de 3 Capas)
 if predict_router:
     app.include_router(
-    predict_router,
-    prefix="/api/ia/predict",
-    tags=["IA"]
-)
+        predict_router,
+        prefix="/api/ia/predict", # Sincronizado con Reportes.jsx
+        tags=["IA"]
+    )
 
 # --- ESQUEMAS PYDANTIC ---
 
@@ -138,7 +136,7 @@ async def list_productos(db: Session = Depends(get_db)):
 if __name__ == "__main__":
     uvicorn.run(
         "main:app", 
-        host="127.0.0.1", 
+        host="0.0.0.0", 
         port=8000, 
         reload=True, # reload=True puede causar SpawnErrors en 3.14, si falla, cámbialo a False
         workers=1    # Mantener 1 worker ayuda a la estabilidad en entornos virtuales
